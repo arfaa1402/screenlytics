@@ -1,0 +1,98 @@
+/* src/pages/Awareness.module.css */
+.page { padding-top: 66px; }
+
+.quoteHero {
+  background: linear-gradient(135deg, rgba(200,98,42,.09), rgba(232,164,74,.07));
+  border: 1.5px solid rgba(200,98,42,.2);
+  border-radius: 20px;
+  padding: 44px;
+  text-align: center;
+  margin-bottom: 24px;
+}
+.scoreTag {
+  display: inline-block;
+  margin-bottom: 14px;
+  background: rgba(200,98,42,.1);
+  border: 1px solid rgba(200,98,42,.2);
+  color: var(--accent);
+  padding: 4px 14px;
+  border-radius: 100px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.quoteMark {
+  font-family: 'Fraunces', serif;
+  font-size: 4rem;
+  color: var(--accent);
+  opacity: 0.2;
+  line-height: 1;
+}
+.bigQuote {
+  font-family: 'Fraunces', serif;
+  font-size: 1.22rem;
+  font-style: italic;
+  color: var(--text);
+  line-height: 1.65;
+  max-width: 580px;
+  margin: 0 auto 12px;
+  font-weight: 600;
+}
+.quoteAuthor {
+  font-size: 0.85rem;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.articleGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-bottom: 32px;
+}
+.articleCard {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  transition: all 0.25s;
+}
+.articleCard:hover { border-color: var(--accent2); transform: translateY(-2px); }
+.articleTag {
+  font-size: 0.7rem;
+  color: var(--accent);
+  letter-spacing: 0.9px;
+  text-transform: uppercase;
+  margin-bottom: 9px;
+  font-weight: 700;
+}
+.articleCard h3 { font-size: 0.95rem; margin-bottom: 9px; line-height: 1.4; }
+.articleCard p  { font-size: 0.83rem; color: var(--muted); line-height: 1.65; }
+
+.stratHeading {
+  font-size: 1.1rem;
+  font-style: italic;
+  margin-bottom: 18px;
+}
+.stratGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+.stratCard {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  text-align: center;
+  transition: all 0.25s;
+}
+.stratCard:hover { border-color: var(--accent2); transform: translateY(-2px); }
+.stratIcon { font-size: 1.9rem; margin-bottom: 10px; }
+.stratCard h4 { font-size: 0.88rem; margin-bottom: 7px; }
+.stratCard p  { font-size: 0.79rem; color: var(--muted); line-height: 1.5; }
+
+@media (max-width: 768px) {
+  .articleGrid { grid-template-columns: 1fr; }
+  .stratGrid   { grid-template-columns: 1fr 1fr; }
+  .quoteHero   { padding: 28px 20px; }
+}

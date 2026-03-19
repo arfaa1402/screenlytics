@@ -1,0 +1,103 @@
+/* src/pages/Profile.module.css */
+.page { padding-top: 66px; }
+
+.layout {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  gap: 24px;
+}
+
+/* Sidebar */
+.sidebar {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 20px;
+  padding: 30px;
+  text-align: center;
+  height: fit-content;
+  box-shadow: 0 2px 12px var(--shadow);
+}
+.avatar {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-size: 1.7rem;
+  font-weight: 900;
+  color: #fff;
+  margin: 0 auto 14px;
+  font-style: italic;
+}
+.name  { font-size: 1.05rem; font-style: italic; font-weight: 700; margin-bottom: 3px; }
+.emailDisp { font-size: 0.8rem; color: var(--muted); margin-bottom: 18px; }
+
+.statRow {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+  font-size: 0.82rem;
+}
+.statLbl { color: var(--muted); }
+.statVal { font-weight: 700; color: var(--accent); }
+
+/* Right content */
+.content { display: flex; flex-direction: column; gap: 20px; }
+
+.secLabel {
+  font-size: 0.72rem;
+  color: var(--muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+  font-weight: 600;
+}
+
+/* Name row */
+.nameRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+/* Password fields */
+.pwFields { display: flex; flex-direction: column; gap: 13px; }
+.pwRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* Settings rows */
+.settRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--border);
+}
+.settLast { border-bottom: none; }
+.settLbl  { font-size: 0.88rem; font-weight: 500; }
+.settDesc { font-size: 0.77rem; color: var(--muted); margin-top: 2px; }
+
+/* Danger zone */
+.dangerZone {
+  background: rgba(231, 76, 60, 0.05);
+  border: 1.5px solid rgba(231, 76, 60, 0.18);
+  border-radius: 14px;
+  padding: 20px;
+}
+.dangerZone h3 { color: #e74c3c; font-size: 0.95rem; margin-bottom: 8px; }
+.dangerZone p  { font-size: 0.82rem; color: var(--muted); margin-bottom: 14px; }
+.dangerBtns    { display: flex; gap: 10px; flex-wrap: wrap; }
+
+@media (max-width: 768px) {
+  .layout   { grid-template-columns: 1fr; }
+  .nameRow  { grid-template-columns: 1fr; }
+  .pwRow    { grid-template-columns: 1fr; }
+}

@@ -1,0 +1,35 @@
+/* src/components/Toast.module.css */
+.toast {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  z-index: 9999;
+  background: var(--surface);
+  border: 1.5px solid var(--border2);
+  border-radius: 14px;
+  padding: 13px 22px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 8px 32px var(--shadow);
+  transform: translateY(80px);
+  opacity: 0;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  pointer-events: none;
+}
+.toast.show {
+  transform: translateY(0);
+  opacity: 1;
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+.msg {
+  font-size: 0.87rem;
+  color: var(--text2);
+  white-space: nowrap;
+}

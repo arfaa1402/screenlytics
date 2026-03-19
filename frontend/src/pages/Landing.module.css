@@ -1,0 +1,179 @@
+/* src/pages/Landing.module.css */
+
+.page {
+  padding-top: 66px;
+  background-image:
+    radial-gradient(ellipse 70% 50% at 20% 30%, rgba(232, 164, 74, 0.12) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 60% at 80% 70%, rgba(200, 98, 42, 0.09) 0%, transparent 60%);
+  animation: fadeIn 0.28s ease;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ── Hero ── */
+.hero {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 96px 36px 68px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(200, 98, 42, 0.1);
+  border: 1.5px solid rgba(200, 98, 42, 0.22);
+  padding: 6px 18px;
+  border-radius: 100px;
+  font-size: 0.8rem;
+  color: var(--accent);
+  margin-bottom: 28px;
+  font-weight: 600;
+}
+
+.pillDot {
+  width: 7px;
+  height: 7px;
+  background: var(--accent);
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+  flex-shrink: 0;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(1.4); }
+}
+
+.heading {
+  font-size: clamp(2.8rem, 6.5vw, 5rem);
+  font-weight: 900;
+  font-style: italic;
+  line-height: 1.07;
+  letter-spacing: -1.5px;
+  margin-bottom: 22px;
+  color: var(--text);
+}
+.heading em { color: var(--accent); font-style: italic; }
+
+.desc {
+  font-size: 1.05rem;
+  color: var(--muted);
+  line-height: 1.72;
+  max-width: 520px;
+  margin-bottom: 42px;
+}
+
+.btns {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.btnMain {
+  background: var(--accent);
+  color: #fff;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-style: italic;
+  font-size: 1rem;
+  padding: 14px 34px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.25s;
+}
+.btnMain:hover {
+  background: var(--accent4);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(200, 98, 42, 0.28);
+}
+
+.btnOutline {
+  background: transparent;
+  color: var(--text2);
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 500;
+  font-size: 1rem;
+  padding: 14px 34px;
+  border-radius: 12px;
+  border: 1.5px solid var(--border2);
+  cursor: pointer;
+  transition: all 0.25s;
+}
+.btnOutline:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ── Stats strip ── */
+.statsStrip {
+  display: flex;
+  max-width: 680px;
+  margin: 0 auto 72px;
+  width: 100%;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px var(--shadow);
+}
+.statItem {
+  flex: 1;
+  padding: 26px 20px;
+  text-align: center;
+  border-right: 1px solid var(--border);
+}
+.statItem:last-child { border-right: none; }
+.statNum {
+  font-family: 'Fraunces', serif;
+  font-size: 2rem;
+  font-weight: 900;
+  color: var(--accent);
+  font-style: italic;
+}
+.statLbl {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+/* ── Feature cards ── */
+.features {
+  max-width: 1100px;
+  margin: 0 auto 80px;
+  padding: 0 36px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+.featCard {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  padding: 26px;
+  transition: all 0.3s;
+}
+.featCard:hover {
+  border-color: var(--accent2);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 28px var(--shadow);
+}
+.featIcon { font-size: 1.7rem; margin-bottom: 14px; }
+.featCard h3 { font-size: 0.95rem; margin-bottom: 7px; }
+.featCard p  { font-size: 0.83rem; color: var(--muted); line-height: 1.6; }
+
+@media (max-width: 768px) {
+  .hero    { padding: 70px 20px 60px; }
+  .features { grid-template-columns: 1fr; padding: 0 18px; }
+  .statsStrip { flex-direction: column; }
+  .statItem { border-right: none; border-bottom: 1px solid var(--border); }
+  .statItem:last-child { border-bottom: none; }
+}
