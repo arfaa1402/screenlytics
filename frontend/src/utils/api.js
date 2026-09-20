@@ -22,9 +22,13 @@ async function apiFetch(endpoint, options = {}) {
     headers,
   });
 
-  const data = await res.json();
+  const data = await res.json().catch(() => ({ message: 'Invalid response from server' }));
 
   if (!res.ok) {
+    if (res.status === 401) {
+      localStorage.removeItem('sl-token');
+      localStorage.removeItem('sl-user');
+    }
     throw new Error(data.message || 'Something went wrong');
   }
 
@@ -91,4 +95,31 @@ export const profileAPI = {
 // ─── AWARENESS ──────────────────────────────────────────
 export const awarenessAPI = {
   getQuote: (score) => apiFetch(`/awareness/quote/${score}`),
+};
+
+// ─── CHATBOT & SCHEDULE ADVISOR ─────────────────────────
+export const chatbotAPI = {
+  sendMessage: (body) =>
+    apiFetch('/chatbot/chat', { method: 'POST', body: JSON.stringify(body) }),
+
+  getSessions: () =>
+    apiFetch('/chatbot/sessions'),
+
+  createSession: (body) =>
+    apiFetch('/chatbot/sessions', { method: 'POST', body: JSON.stringify(body) }),
+
+  getSessionMessages: (id) =>
+    apiFetch(`/chatbot/sessions/${id}/messages`),
+
+  deleteSession: (id) =>
+    apiFetch(`/chatbot/sessions/${id}`, { method: 'DELETE' }),
+
+  analyzeSchedule: (body) =>
+    apiFetch('/chatbot/analyze', { method: 'POST', body: JSON.stringify(body) }),
+};
+
+// ─── ACHIEVEMENTS & GAMIFICATION ────────────────────────
+export const achievementsAPI = {
+  getAll: () => apiFetch('/achievements'),
+  evaluate: () => apiFetch('/achievements/evaluate', { method: 'POST' }),
 };

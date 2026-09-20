@@ -1,4 +1,4 @@
-// src/components/Navbar.jsx — fixed crash when lastName is empty
+// src/components/Navbar.jsx
 
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useState } from 'react';
@@ -11,6 +11,8 @@ const NAV_LINKS = [
   { label: 'Analytics', path: '/analytics' },
   { label: 'Awareness', path: '/awareness' },
   { label: 'Planner',   path: '/planner'   },
+  { label: '🤖 AI Advisor', path: '/schedule-advisor' },
+  { label: '🏆 Achievements', path: '/achievements' },
 ];
 
 export default function Navbar() {
@@ -19,7 +21,7 @@ export default function Navbar() {
   const location = useLocation();
   const [ddOpen, setDdOpen] = useState(false);
 
-  // ✅ Safe initials — handles missing/empty lastName
+  // Safe initials — handles missing/empty lastName
   const initials = user
     ? ((user.firstName?.[0] || '') + (user.lastName?.[0] || '')).toUpperCase() || '?'
     : '';
@@ -82,7 +84,6 @@ export default function Navbar() {
             </div>
             {ddOpen && (
               <div className={styles.dropdown}>
-                {/* ✅ Profile name display */}
                 <div className={styles.ddUser}>
                   <div className={styles.ddName}>{user.firstName} {user.lastName}</div>
                   <div className={styles.ddEmail}>{user.email}</div>

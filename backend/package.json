@@ -1,22 +1,25 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "",
+  "description": "Screenlytics Backend API",
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "migrate": "node scripts/migrateFromMysql.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
-    "mysql2": "^3.19.1"
+    "mongoose": "^8.12.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"

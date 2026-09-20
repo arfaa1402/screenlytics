@@ -1,90 +1,62 @@
-// backend/controllers/profileController.js
-
-const db     = require('../config/db');
+const User = require('../models/User');
+const ScreenLog = require('../models/ScreenLog');
+const BurnoutScore = require('../models/BurnoutScore');
+const NotificationSettings = require('../models/NotificationSettings');
+const Task = require('../models/Task');
 const bcrypt = require('bcryptjs');
 
-// ─────────────────────────────────────────
-// GET PROFILE — user info + stats + notifications
-// ─────────────────────────────────────────
+// GET PROFILE
 exports.getProfile = async (req, res) => {
   const userId = req.user.id;
 
   try {
-    // 1. User info
-    const [userRows] = await db.query(
-      `SELECT id, name, email,
-        DATE_FORMAT(created_at, '%Y') AS memberSince
-       FROM users WHERE id = ?`,
-      [userId]
-    );
-    if (userRows.length === 0)
+    const u = await User.findById(userId);
+    if (!u)
       return res.status(404).json({ message: 'User not found' });
 
-    const u         = userRows[0];
-    const parts     = u.name.trim().split(' ');
+    const parts = u.name.trim().split(' ');
     const firstName = parts[0] || '';
-    const lastName  = parts.slice(1).join(' ') || '';
+    const lastName = parts.slice(1).join(' ') || '';
 
-    // 2. Days logged count
-    const [logCount] = await db.query(
-      'SELECT COUNT(*) AS daysLogged FROM screen_logs WHERE user_id = ?',
-      [userId]
-    );
+    const daysLogged = await ScreenLog.countDocuments({ user: userId });
+    const latestBurnout = await BurnoutScore.findOne({ user: userId }).sort({ recordedAt: -1 });
 
-    // 3. Latest burnout score
-    const [burnoutRows] = await db.query(
-      `SELECT score FROM burnout_scores
-       WHERE user_id = ? ORDER BY recorded_at DESC LIMIT 1`,
-      [userId]
-    );
-
-    // 4. Notification settings
-    //    ✅ Auto-create default row if user has never set preferences
-    const [notifRows] = await db.query(
-      'SELECT daily_reminders, burnout_alerts, weekly_report FROM notification_settings WHERE user_id = ?',
-      [userId]
-    );
-
-    if (notifRows.length === 0) {
-      // First time — insert default row
-      await db.query(
-        `INSERT INTO notification_settings
-         (user_id, daily_reminders, burnout_alerts, weekly_report)
-         VALUES (?, 1, 1, 0)`,
-        [userId]
-      );
+    let notif = await NotificationSettings.findOne({ user: userId });
+    if (!notif) {
+      notif = await NotificationSettings.create({
+        user: userId,
+        dailyReminders: true,
+        burnoutAlerts: true,
+        weeklyReport: false,
+      });
     }
-
-    const notif = notifRows[0] || { daily_reminders: 1, burnout_alerts: 1, weekly_report: 0 };
 
     res.status(200).json({
       user: {
-        id:          u.id,
+        id: u._id.toString(),
         firstName,
         lastName,
-        email:       u.email,
-        memberSince: u.memberSince
+        email: u.email,
+        memberSince: u.createdAt ? u.createdAt.getFullYear().toString() : '2026',
       },
       stats: {
-        burnoutScore: burnoutRows.length > 0 ? parseFloat(burnoutRows[0].score) : 0,
-        daysLogged:   Number(logCount[0].daysLogged)
+        burnoutScore: latestBurnout ? parseFloat(latestBurnout.score) : 0,
+        daysLogged: Number(daysLogged),
       },
       notifications: {
-        dailyReminders: notif.daily_reminders === 1,
-        burnoutAlerts:  notif.burnout_alerts  === 1,
-        weeklyReport:   notif.weekly_report   === 1
+        dailyReminders: Boolean(notif.dailyReminders),
+        burnoutAlerts: Boolean(notif.burnoutAlerts),
+        weeklyReport: Boolean(notif.weeklyReport),
       }
     });
 
   } catch (err) {
-    console.error('Get profile error:', err.message);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Get profile error details:', err);
+    res.status(500).json({ message: err.message || 'Server error loading profile' });
   }
 };
 
-// ─────────────────────────────────────────
-// UPDATE PROFILE (name + email)
-// ─────────────────────────────────────────
+// UPDATE PROFILE
 exports.updateProfile = async (req, res) => {
   const userId = req.user.id;
   const { firstName, lastName, email } = req.body;
@@ -95,39 +67,36 @@ exports.updateProfile = async (req, res) => {
     return res.status(400).json({ message: 'Email is required' });
 
   try {
-    // Check email not used by another account
-    const [existing] = await db.query(
-      'SELECT id FROM users WHERE email = ? AND id != ?',
-      [email.trim(), userId]
-    );
-    if (existing.length > 0)
+    const existing = await User.findOne({
+      email: email.trim().toLowerCase(),
+      _id: { $ne: userId }
+    });
+    if (existing)
       return res.status(409).json({ message: 'Email already in use by another account' });
 
     const fullName = `${firstName.trim()} ${lastName ? lastName.trim() : ''}`.trim();
 
-    await db.query(
-      'UPDATE users SET name = ?, email = ? WHERE id = ?',
-      [fullName, email.trim(), userId]
-    );
+    await User.findByIdAndUpdate(userId, {
+      name: fullName,
+      email: email.trim().toLowerCase(),
+    });
 
     res.status(200).json({
       message: 'Profile updated successfully',
       user: {
         firstName: firstName.trim(),
-        lastName:  lastName ? lastName.trim() : '',
-        email:     email.trim()
+        lastName: lastName ? lastName.trim() : '',
+        email: email.trim().toLowerCase(),
       }
     });
 
   } catch (err) {
-    console.error('Update profile error:', err.message);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Update profile error details:', err);
+    res.status(500).json({ message: err.message || 'Server error updating profile' });
   }
 };
 
-// ─────────────────────────────────────────
 // CHANGE PASSWORD
-// ─────────────────────────────────────────
 exports.changePassword = async (req, res) => {
   const userId = req.user.id;
   const { currentPassword, newPassword, confirmPassword } = req.body;
@@ -140,128 +109,95 @@ exports.changePassword = async (req, res) => {
     return res.status(400).json({ message: 'Password must be at least 8 characters' });
 
   try {
-    const [rows] = await db.query(
-      'SELECT password FROM users WHERE id = ?', [userId]
-    );
-    if (rows.length === 0)
+    const user = await User.findById(userId);
+    if (!user)
       return res.status(404).json({ message: 'User not found' });
 
-    const isMatch = await bcrypt.compare(currentPassword, rows[0].password);
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
     if (!isMatch)
       return res.status(401).json({ message: 'Current password is incorrect' });
 
-    const hashed = await bcrypt.hash(newPassword, 10);
-    await db.query('UPDATE users SET password = ? WHERE id = ?', [hashed, userId]);
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
 
     res.status(200).json({ message: 'Password updated successfully' });
 
   } catch (err) {
-    console.error('Change password error:', err.message);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Change password error details:', err);
+    res.status(500).json({ message: err.message || 'Server error changing password' });
   }
 };
 
-// ─────────────────────────────────────────
 // UPDATE NOTIFICATION SETTINGS
-// ✅ Upsert — works whether row exists or not
-// ─────────────────────────────────────────
 exports.updateNotifications = async (req, res) => {
   const userId = req.user.id;
   const { dailyReminders, burnoutAlerts, weeklyReport } = req.body;
 
   try {
-    const [existing] = await db.query(
-      'SELECT id FROM notification_settings WHERE user_id = ?',
-      [userId]
+    const notif = await NotificationSettings.findOneAndUpdate(
+      { user: userId },
+      {
+        dailyReminders: Boolean(dailyReminders),
+        burnoutAlerts: Boolean(burnoutAlerts),
+        weeklyReport: Boolean(weeklyReport),
+      },
+      { upsert: true, new: true }
     );
-
-    if (existing.length > 0) {
-      await db.query(
-        `UPDATE notification_settings
-         SET daily_reminders = ?, burnout_alerts = ?, weekly_report = ?
-         WHERE user_id = ?`,
-        [dailyReminders ? 1 : 0, burnoutAlerts ? 1 : 0, weeklyReport ? 1 : 0, userId]
-      );
-    } else {
-      await db.query(
-        `INSERT INTO notification_settings
-         (user_id, daily_reminders, burnout_alerts, weekly_report)
-         VALUES (?, ?, ?, ?)`,
-        [userId, dailyReminders ? 1 : 0, burnoutAlerts ? 1 : 0, weeklyReport ? 1 : 0]
-      );
-    }
 
     res.status(200).json({
       message: 'Notification settings saved ✅',
       notifications: {
-        dailyReminders: !!dailyReminders,
-        burnoutAlerts:  !!burnoutAlerts,
-        weeklyReport:   !!weeklyReport
+        dailyReminders: Boolean(notif.dailyReminders),
+        burnoutAlerts: Boolean(notif.burnoutAlerts),
+        weeklyReport: Boolean(notif.weeklyReport),
       }
     });
 
   } catch (err) {
-    console.error('Update notifications error:', err.message);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Update notifications error details:', err);
+    res.status(500).json({ message: err.message || 'Server error saving notifications' });
   }
 };
 
-// ─────────────────────────────────────────
 // EXPORT ALL USER DATA
-// ─────────────────────────────────────────
 exports.exportData = async (req, res) => {
   const userId = req.user.id;
 
   try {
-    const [userRows]    = await db.query(
-      'SELECT id, name, email, created_at FROM users WHERE id = ?',
-      [userId]
-    );
-    const [logRows]     = await db.query(
-      `SELECT DATE_FORMAT(log_date,'%Y-%m-%d') AS date,
-        total_mins, study_mins, social_mins, ent_mins, other_mins, score, category
-       FROM screen_logs WHERE user_id = ? ORDER BY log_date ASC`,
-      [userId]
-    );
-    const [taskRows]    = await db.query(
-      `SELECT title, type,
-        DATE_FORMAT(iso_date,'%Y-%m-%d') AS date,
-        time, duration, done
-       FROM tasks WHERE user_id = ? ORDER BY iso_date ASC`,
-      [userId]
-    );
-    const [burnoutRows] = await db.query(
-      `SELECT score, DATE_FORMAT(recorded_at,'%Y-%m-%d') AS date
-       FROM burnout_scores WHERE user_id = ? ORDER BY recorded_at ASC`,
-      [userId]
-    );
+    const user = await User.findById(userId).select('-password');
+    const logs = await ScreenLog.find({ user: userId }).sort({ logDate: 1 });
+    const tasks = await Task.find({ user: userId }).sort({ isoDate: 1 });
+    const burnout = await BurnoutScore.find({ user: userId }).sort({ recordedAt: 1 });
 
     res.status(200).json({
       exportedAt: new Date().toISOString(),
-      user:       userRows[0],
-      screenLogs: logRows,
-      tasks:      taskRows,
-      burnout:    burnoutRows
+      user,
+      screenLogs: logs,
+      tasks,
+      burnout,
     });
 
   } catch (err) {
-    console.error('Export data error:', err.message);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Export data error details:', err);
+    res.status(500).json({ message: err.message || 'Server error exporting data' });
   }
 };
 
-// ─────────────────────────────────────────
 // DELETE ACCOUNT
-// CASCADE in DB auto-deletes all related rows
-// ─────────────────────────────────────────
 exports.deleteAccount = async (req, res) => {
   const userId = req.user.id;
 
   try {
-    await db.query('DELETE FROM users WHERE id = ?', [userId]);
+    await ScreenLog.deleteMany({ user: userId });
+    await Task.deleteMany({ user: userId });
+    await BurnoutScore.deleteMany({ user: userId });
+    await NotificationSettings.deleteMany({ user: userId });
+    await User.findByIdAndDelete(userId);
+
     res.status(200).json({ message: 'Account deleted successfully' });
+
   } catch (err) {
-    console.error('Delete account error:', err.message);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Delete account error details:', err);
+    res.status(500).json({ message: err.message || 'Server error deleting account' });
   }
 };

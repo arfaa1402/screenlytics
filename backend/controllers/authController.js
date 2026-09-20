@@ -1,8 +1,8 @@
-const db = require('../config/db');
+const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
-// ✅ REGISTER
+// REGISTER
 exports.register = async (req, res) => {
   const { firstName, lastName, email, password } = req.body;
 
@@ -14,29 +14,29 @@ exports.register = async (req, res) => {
   }
 
   try {
-    const [existing] = await db.query(
-      'SELECT id FROM users WHERE email = ?', [email]
-    );
-    if (existing.length > 0) {
+    const existing = await User.findOne({ email: email.trim().toLowerCase() });
+    if (existing) {
       return res.status(409).json({ message: 'Email already registered' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    const fullName = `${firstName.trim()} ${lastName ? lastName.trim() : ''}`.trim();
 
-    await db.query(
-      'INSERT INTO users (name, email, password) VALUES (?, ?, ?)',
-      [`${firstName} ${lastName || ''}`.trim(), email, hashedPassword]
-    );
+    const user = await User.create({
+      name: fullName,
+      email: email.trim().toLowerCase(),
+      password: hashedPassword,
+    });
 
-    res.status(201).json({ message: 'Account created successfully' });
+    res.status(201).json({ message: 'Account created successfully', userId: user._id.toString() });
 
   } catch (err) {
-    console.error('Register error:', err.message);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Register error details:', err);
+    res.status(500).json({ message: err.message || 'Server error during registration' });
   }
 };
 
-// ✅ LOGIN
+// LOGIN
 exports.login = async (req, res) => {
   const { email, password } = req.body;
 
@@ -45,38 +45,35 @@ exports.login = async (req, res) => {
   }
 
   try {
-    const [rows] = await db.query(
-      'SELECT * FROM users WHERE email = ?', [email]
-    );
-    if (rows.length === 0) {
+    const user = await User.findOne({ email: email.trim().toLowerCase() });
+    if (!user) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
-
-    const user = rows[0];
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
+    const secret = process.env.JWT_SECRET || 'mysecretkey123';
     const token = jwt.sign(
-      { id: user.id, email: user.email },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN }
+      { id: user._id.toString(), email: user.email },
+      secret,
+      { expiresIn: process.env.JWT_EXPIRES_IN || '1d' }
     );
 
     res.status(200).json({
       message: 'Login successful',
       token,
       user: {
-        id: user.id,
+        id: user._id.toString(),
         name: user.name,
-        email: user.email
-      }
+        email: user.email,
+      },
     });
 
   } catch (err) {
-    console.error('Login error:', err.message);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Login error details:', err);
+    res.status(500).json({ message: err.message || 'Server error during login' });
   }
 };

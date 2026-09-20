@@ -1,53 +1,33 @@
-// backend/controllers/plannerController.js
+const Task = require('../models/Task');
+const achievementService = require('../services/achievementService');
 
-const db = require('../config/db');
-
-// ─────────────────────────────────────────
 // GET ALL TASKS for logged-in user
-// ─────────────────────────────────────────
 exports.getTasks = async (req, res) => {
   const userId = req.user.id;
 
   try {
-    const [rows] = await db.query(
-      `SELECT 
-        id,
-        title,
-        type,
-        DATE_FORMAT(iso_date, '%Y-%m-%d') AS isoDate,
-        display_date                       AS displayDate,
-        TIME_FORMAT(time, '%H:%i')         AS time,
-        duration,
-        done
-       FROM tasks
-       WHERE user_id = ?
-       ORDER BY iso_date ASC, time ASC`,
-      [userId]
-    );
+    const rawTasks = await Task.find({ user: userId }).sort({ isoDate: 1, time: 1 });
 
-    // Force correct JS types — MySQL returns strings
-    const tasks = rows.map(t => ({
-      id:          Number(t.id),
-      title:       t.title,
-      type:        t.type,
-      isoDate:     t.isoDate,
-      displayDate: t.displayDate,
-      time:        t.time,
-      duration:    Number(t.duration),   // ✅ must be number for end-time calculation
-      done:        t.done === 1          // ✅ must be boolean not 0/1
+    const tasks = rawTasks.map(t => ({
+      id: t._id.toString(),
+      title: t.title,
+      type: t.type,
+      isoDate: t.isoDate,
+      displayDate: t.displayDate || t.isoDate.split('-').reverse().join(' / '),
+      time: t.time,
+      duration: Number(t.duration),
+      done: Boolean(t.done),
     }));
 
     res.status(200).json({ tasks });
 
   } catch (err) {
-    console.error('Get tasks error:', err.message);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Get tasks error details:', err);
+    res.status(500).json({ message: err.message || 'Server error loading tasks' });
   }
 };
 
-// ─────────────────────────────────────────
 // ADD TASK
-// ─────────────────────────────────────────
 exports.addTask = async (req, res) => {
   const userId = req.user.id;
   const { title, type, isoDate, displayDate, time, duration } = req.body;
@@ -70,87 +50,85 @@ exports.addTask = async (req, res) => {
   try {
     const safeDisplayDate = displayDate || isoDate.split('-').reverse().join(' / ');
 
-    const [result] = await db.query(
-      `INSERT INTO tasks 
-       (user_id, title, type, iso_date, display_date, time, duration, done)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 0)`,
-      [userId, title.trim(), type, isoDate, safeDisplayDate, time, Number(duration)]
-    );
+    const task = await Task.create({
+      user: userId,
+      title: title.trim(),
+      type,
+      isoDate,
+      displayDate: safeDisplayDate,
+      time,
+      duration: Number(duration),
+      done: false,
+    });
+
+    // Auto-evaluate user achievements
+    achievementService.evaluateUserAchievements(userId).catch(err => console.error('Auto achievement eval error:', err.message));
 
     res.status(201).json({
       message: 'Task added successfully',
       task: {
-        id:          result.insertId,        // ✅ real DB id, not Date.now()
-        title:       title.trim(),
-        type,
-        isoDate,
-        displayDate: safeDisplayDate,
-        time,
-        duration:    Number(duration),
-        done:        false
+        id: task._id.toString(),
+        title: task.title,
+        type: task.type,
+        isoDate: task.isoDate,
+        displayDate: task.displayDate,
+        time: task.time,
+        duration: task.duration,
+        done: task.done,
       }
     });
 
   } catch (err) {
-    console.error('Add task error:', err.message);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Add task error details:', err);
+    res.status(500).json({ message: err.message || 'Server error adding task' });
   }
 };
 
-// ─────────────────────────────────────────
 // TOGGLE TASK done ↔ undone
-// ─────────────────────────────────────────
 exports.toggleTask = async (req, res) => {
   const userId = req.user.id;
-  const { id }  = req.params;
+  const { id } = req.params;
 
   try {
-    const [rows] = await db.query(
-      'SELECT done FROM tasks WHERE id = ? AND user_id = ?',
-      [id, userId]
-    );
-
-    if (rows.length === 0)
+    const task = await Task.findOne({ _id: id, user: userId });
+    if (!task)
       return res.status(404).json({ message: 'Task not found' });
 
-    const newDone = rows[0].done === 0 ? 1 : 0;
+    task.done = !task.done;
+    await task.save();
 
-    await db.query(
-      'UPDATE tasks SET done = ? WHERE id = ? AND user_id = ?',
-      [newDone, id, userId]
-    );
+    // Auto-evaluate user achievements
+    achievementService.evaluateUserAchievements(userId).catch(err => console.error('Auto achievement eval error:', err.message));
 
     res.status(200).json({
-      message: newDone ? 'Task marked as done' : 'Task marked as undone',
-      done:    newDone === 1   // ✅ boolean for frontend
+      message: task.done ? 'Task marked as done' : 'Task marked as undone',
+      done: task.done,
     });
 
   } catch (err) {
-    console.error('Toggle task error:', err.message);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Toggle task error details:', err);
+    res.status(500).json({ message: err.message || 'Server error toggling task' });
   }
 };
 
-// ─────────────────────────────────────────
 // DELETE TASK
-// ─────────────────────────────────────────
 exports.deleteTask = async (req, res) => {
   const userId = req.user.id;
-  const { id }  = req.params;
+  const { id } = req.params;
 
   try {
-    const [result] = await db.query(
-      'DELETE FROM tasks WHERE id = ? AND user_id = ?',
-      [id, userId]
-    );
+    const result = await Task.deleteOne({ _id: id, user: userId });
 
-    if (result.affectedRows === 0)
+    if (result.deletedCount === 0)
       return res.status(404).json({ message: 'Task not found' });
+
+    // Auto-evaluate user achievements
+    achievementService.evaluateUserAchievements(userId).catch(err => console.error('Auto achievement eval error:', err.message));
 
     res.status(200).json({ message: 'Task deleted successfully' });
 
   } catch (err) {
-    console.error('Delete task error:', err.message);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Delete task error details:', err);
+    res.status(500).json({ message: err.message || 'Server error deleting task' });
   }
 };
